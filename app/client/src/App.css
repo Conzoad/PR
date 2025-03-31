@@ -1,0 +1,31 @@
+.App {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+.todo-item {
+  transition: background-color 0.3s;
+}
+
+.todo-item:hover {
+  background-color: #f1f1f1;
+}
+
+.todo-completed {
+  text-decoration: line-through;
+  color: #6c757d;
+}
+
+.btn-action {
+  margin-left: 5px;
+}
+
+.detail-card {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.form-container {
+  max-width: 500px;
+  margin: 0 auto;
+} 
