@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import EmailModal from './EmailModal';
+import { FaEnvelope, FaEdit, FaTrash, FaCheckCircle, FaArrowLeft } from 'react-icons/fa';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -10,6 +12,7 @@ const TodoDetail = () => {
   const [todo, setTodo] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   useEffect(() => {
     const fetchTodo = async () => {
@@ -51,6 +54,10 @@ const TodoDetail = () => {
     }
   };
 
+  const handleSendEmail = () => {
+    setShowEmailModal(true);
+  };
+
   if (isLoading) {
     return (
       <div className="d-flex justify-content-center mt-5">
@@ -66,7 +73,9 @@ const TodoDetail = () => {
       <div className="alert alert-danger" role="alert">
         {error}
         <div className="mt-3">
-          <Link to="/" className="btn btn-primary">Back to List</Link>
+          <Link to="/" className="btn btn-primary">
+            <FaArrowLeft className="icon" /> Back to List
+          </Link>
         </div>
       </div>
     );
@@ -84,10 +93,11 @@ const TodoDetail = () => {
               className="btn btn-sm btn-success me-2" 
               onClick={handleToggleComplete}
             >
+              <FaCheckCircle className="icon" />
               {todo.completed ? 'Mark as Incomplete' : 'Mark as Complete'}
             </button>
             <Link to="/" className="btn btn-sm btn-primary me-2">
-              Back to List
+              <FaArrowLeft className="icon" /> Back to List
             </Link>
           </div>
         </div>
@@ -106,22 +116,38 @@ const TodoDetail = () => {
               </small>
             </div>
             <div>
+              <button 
+                className="btn btn-secondary btn-sm me-2 btn-email"
+                onClick={handleSendEmail}
+                title="Send via Email"
+              >
+                <FaEnvelope className="icon" /> Email
+              </button>
               <Link 
                 to={`/?edit=${todo._id}`} 
                 className="btn btn-warning btn-sm me-2"
               >
-                Edit
+                <FaEdit className="icon" /> Edit
               </Link>
               <button 
                 className="btn btn-danger btn-sm"
                 onClick={handleDelete}
               >
-                Delete
+                <FaTrash className="icon" /> Delete
               </button>
             </div>
           </div>
         </div>
       </div>
+      
+      {/* Модальное окно для отправки email */}
+      {showEmailModal && (
+        <EmailModal 
+          taskId={todo._id}
+          taskTitle={todo.title}
+          onClose={() => setShowEmailModal(false)}
+        />
+      )}
     </div>
   );
 };

@@ -10,7 +10,15 @@ function App() {
       <div className="App">
         <nav className="navbar navbar-dark bg-dark">
           <div className="container">
-            <span className="navbar-brand mb-0 h1">ToDo List App</span>
+            <span className="navbar-brand mb-0 h1">ToDo List App with Email</span>
+            <a 
+              className="text-light" 
+              href="https://github.com/Conzoad/PR" 
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              GitHub
+            </a>
           </div>
         </nav>
         <div className="container py-4">
