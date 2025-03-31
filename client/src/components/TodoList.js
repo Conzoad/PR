@@ -4,7 +4,8 @@ import axios from 'axios';
 import TodoForm from './TodoForm';
 import EmailModal from './EmailModal';
 import EmailInbox from './EmailInbox';
-import { FaEnvelope, FaEdit, FaTrash, FaEye, FaTasks, FaInbox } from 'react-icons/fa';
+import { FaEnvelope, FaEdit, FaTrash, FaEye, FaTasks, FaInbox, FaWifi } from 'react-icons/fa';
+import { useSocket } from '../context/SocketContext';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -16,10 +17,47 @@ const TodoList = () => {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [selectedTaskForEmail, setSelectedTaskForEmail] = useState(null);
   const [activeTab, setActiveTab] = useState('tasks'); // 'tasks' или 'email'
+  const { socket, connected } = useSocket();
 
   useEffect(() => {
     fetchTodos();
   }, []);
+
+  // Обработчики событий WebSocket
+  useEffect(() => {
+    if (!socket) return;
+
+    // Обработчик создания новой задачи
+    socket.on('todoCreated', (newTodo) => {
+      console.log('New todo received:', newTodo);
+      setTodos(prevTodos => [newTodo, ...prevTodos]);
+    });
+
+    // Обработчик обновления задачи
+    socket.on('todoUpdated', (updatedTodo) => {
+      console.log('Todo updated:', updatedTodo);
+      setTodos(prevTodos => 
+        prevTodos.map(todo => 
+          todo._id === updatedTodo._id ? updatedTodo : todo
+        )
+      );
+    });
+
+    // Обработчик удаления задачи
+    socket.on('todoDeleted', (data) => {
+      console.log('Todo deleted:', data.id);
+      setTodos(prevTodos => 
+        prevTodos.filter(todo => todo._id !== data.id)
+      );
+    });
+
+    // Отписка от событий при размонтировании
+    return () => {
+      socket.off('todoCreated');
+      socket.off('todoUpdated');
+      socket.off('todoDeleted');
+    };
+  }, [socket]);
 
   const fetchTodos = async () => {
     try {
@@ -116,6 +154,12 @@ const TodoList = () => {
           >
             <FaInbox className="icon" /> Email Inbox
           </button>
+        </li>
+        {/* WebSocket Connection Status */}
+        <li className="nav-item ms-auto">
+          <span className={`nav-link ${connected ? 'text-success' : 'text-danger'}`}>
+            <FaWifi className="icon" /> {connected ? 'Connected' : 'Disconnected'}
+          </span>
         </li>
       </ul>
 

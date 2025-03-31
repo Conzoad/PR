@@ -15,7 +15,8 @@
     "nodemailer": "^6.9.7",
     "imap": "^0.8.19",
     "mailparser": "^3.6.5",
-    "poplib": "^0.1.7"
+    "poplib": "^0.1.7",
+    "socket.io": "^4.7.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
