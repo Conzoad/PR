@@ -1,0 +1,106 @@
+name: Docker Build, Test and Push
+
+on:
+  push:
+    branches: [ "main", "master", "lab5" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    env:
+      DOCKER_CLIENT_IMAGE: conzoad/todo-client
+      DOCKER_SERVER_IMAGE: conzoad/todo-server
+      DOCKER_NETWORK: todo-app-network
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      # Настройка Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      # Создание Docker-сети
+      - name: Create Docker network
+        run: docker network create ${{ env.DOCKER_NETWORK }}
+      
+      # Сборка образа клиента
+      - name: Build client Docker image
+        run: |
+          docker build -t ${{ env.DOCKER_CLIENT_IMAGE }}:${{ github.sha }} -t ${{ env.DOCKER_CLIENT_IMAGE }}:latest ./client
+      
+      # Сборка образа сервера
+      - name: Build server Docker image
+        run: |
+          docker build -t ${{ env.DOCKER_SERVER_IMAGE }}:${{ github.sha }} -t ${{ env.DOCKER_SERVER_IMAGE }}:latest ./server
+      
+      # Запуск MongoDB
+      - name: Start MongoDB
+        run: |
+          docker run -d --name mongodb --network ${{ env.DOCKER_NETWORK }} mongo:latest
+          # Даем MongoDB время на запуск
+          sleep 5
+      
+      # Запуск сервера
+      - name: Start server container
+        run: |
+          docker run -d --name todo-server --network ${{ env.DOCKER_NETWORK }} \
+            -p 5000:5000 \
+            -e NODE_TLS_REJECT_UNAUTHORIZED=0 \
+            -e MONGODB_URI=mongodb://mongodb:27017/todos \
+            -e EMAIL_USER=test@example.com \
+            -e EMAIL_PASS=password \
+            -e POP3_HOST=pop.example.com \
+            -e POP3_PORT=995 \
+            -e POP3_TLS=true \
+            ${{ env.DOCKER_SERVER_IMAGE }}:${{ github.sha }}
+          # Даем серверу время на запуск
+          sleep 10
+      
+      # Запуск клиента
+      - name: Start client container
+        run: |
+          docker run -d --name todo-client --network ${{ env.DOCKER_NETWORK }} -p 3000:3000 ${{ env.DOCKER_CLIENT_IMAGE }}:${{ github.sha }}
+          # Даем клиенту время на запуск
+          sleep 5
+      
+      # Проверка, что сервер работает
+      - name: Test server API
+        run: |
+          # Проверка API /todos (должен вернуть 200 OK)
+          curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/todos | grep 200 || exit 1
+          
+          # Создание тестовой задачи
+          curl -s -X POST -H "Content-Type: application/json" -d '{"title":"Test Task", "description":"Created by CI/CD"}' http://localhost:5000/api/todos
+          
+          # Проверка, что задачи успешно созданы (должен вернуть непустой массив)
+          curl -s http://localhost:5000/api/todos | grep -q "Test Task" || exit 1
+          
+          echo "Server API tests passed successfully!"
+      
+      # Загрузка образов в Docker Hub
+      - name: Push client image to Docker Hub
+        run: docker push ${{ env.DOCKER_CLIENT_IMAGE }}:${{ github.sha }}
+      
+      - name: Push server image to Docker Hub
+        run: docker push ${{ env.DOCKER_SERVER_IMAGE }}:${{ github.sha }}
+      
+      - name: Push latest tags to Docker Hub
+        run: |
+          docker push ${{ env.DOCKER_CLIENT_IMAGE }}:latest
+          docker push ${{ env.DOCKER_SERVER_IMAGE }}:latest
+      
+      # Очистка контейнеров и сети
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop todo-client todo-server mongodb || true
+          docker rm todo-client todo-server mongodb || true
+          docker network rm ${{ env.DOCKER_NETWORK }} || true 
